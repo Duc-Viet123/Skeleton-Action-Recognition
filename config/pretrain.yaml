@@ -1,0 +1,99 @@
+seed: 1
+num_worker: 16
+work_dir: results/pretrain
+phase: train
+print_log: True
+save_log: True
+#FEEDER
+feeder: Feeders.feeder_pretrain.FeederPretrain
+train_feeder_args:
+  data_path: data/pretrain/train/train_data.npy
+  window_size: 64
+  debug: False
+  normalization: False
+  vel: False
+  bone: False
+  random_choose: True
+  p_interval: [0.5, 1.0]
+  random_shift: True
+  random_move: True
+  random_rot: True
+  random_scale: True
+  random_flip: True        
+  random_noise: True
+  noise_std: 0.02
+  temporal_mask: True
+  temporal_mask_ratio: [0.1, 0.4]
+  spatial_mask: True
+  spatial_mask_ratio: [0.1, 0.3]
+
+val_feeder_args:
+  data_path: data/pretrain/val/val_data.npy
+  window_size: 64
+  debug: False
+  normalization: False
+  vel: False
+  bone: False
+  random_choose: False
+  random_shift: False
+  random_move: False
+  random_rot: False
+  random_scale: False
+  random_flip: False
+  random_noise: False
+  temporal_mask: False
+  spatial_mask: False
+
+#MODEL
+model: model.SkateFormerPre.Model
+model_args:
+  num_people: 2            
+  num_points: 18          
+  num_frames: 64
+  in_channels: 3           
+  embed_dim: 96
+  depths: [2, 2, 2, 2]
+  channels: [96, 192, 192, 192]
+  kernel_size: 7
+  num_heads: 32
+  mlp_ratio: 4.0
+  attn_drop: 0.15
+  drop: 0.1
+  drop_path: 0.2
+  rel: True
+  index_t: False
+  global_pool: avg
+  feature_dim: 192         
+  proj_dim: 128
+  proj_hidden: 512
+  type_1_size: [8, 6]      
+  type_2_size: [8, 3]      
+  type_3_size: [8, 6]
+  type_4_size: [8, 3]
+
+#OPTIMIZER
+optimizer: AdamW
+learning_rate: 0.001
+weight_decay: 0.0001
+
+lr_scheduler: cosine
+min_lr: 0.00001
+warmup_lr: 0.0001
+warm_up_epoch: 10
+#TRAINING
+device: [0]
+batch_size: 256      
+num_epoch: 300
+save_epoch: 10
+grad_clip: True
+grad_max: 1.0
+loss_type: ntxent
+temperature: 0.07         
+early_stopping_patience: 50
+early_stopping_min_delta: 0.0001
+#CHECKPOINT
+weights: null
+log_interval: 50
+tensorboard_log: True
+save_score: False
+save_result: True

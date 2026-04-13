@@ -1,0 +1,90 @@
+seed: 3
+num_worker: 8
+work_dir: results/finetune
+phase: train
+print_log: true
+save_log: true
+
+#FEEDER
+feeder: Feeders.feeder_finetune.FeederMultiClass
+train_feeder_args:
+  data_path: data/finetune/train/train_data.npy
+  label_path: data/finetune/train/train_label.npy
+  debug: false
+  window_size: 64
+  p_interval: [0.85, 1.15]           
+  random_choose: true
+  random_shift: true
+  random_move: false
+  random_rot: false
+  random_spatial_flip: true
+  random_temporal_flip: true
+  temporal_mask: true
+  temporal_dropout: 0.03               
+  normalization: false
+  vel: false
+  bone: false
+
+val_feeder_args: &val_args
+  data_path: data/finetune/val/val_data.npy
+  label_path: data/finetune/val/val_label.npy
+  debug: false
+  window_size: 64
+  p_interval: [1.0, 1.0]
+  random_choose: false
+  random_shift: false
+  random_spatial_flip: false
+  random_temporal_flip: false
+  temporal_mask: false
+  temporal_dropout: 0.0
+  normalization: false
+  vel: false
+  bone: false
+test_feeder_args:
+  <<: *val_args
+  data_path: data/finetune/test/test_data.npy
+  label_path: data/finetune/test/test_label.npy
+
+#MODEL
+model: model.SkateFormer.Model
+model_args:
+  num_classes: 3
+  num_people: 2
+  num_points: 18
+  num_frames: 64
+  in_channels: 3
+  embed_dim: 96
+  depths: [2, 2, 2, 2]
+  channels: [96, 192, 192, 192]
+  kernel_size: 7
+  num_heads: 32
+  mlp_ratio: 4.0
+  attn_drop: 0.1
+  drop: 0.1
+  drop_path: 0.2                      
+  rel: true
+  index_t: false
+  global_pool: avg
+  type_1_size: [8, 6]
+  type_2_size: [8, 3]
+  type_3_size: [8, 6]
+  type_4_size: [8, 3]
+lr: 0.0005                       
+weight_decay: 0.04                      
+batch_size: 32
+num_epoch: 120                 
+warmup_epoch: 15                    
+label_smoothing: 0.08                   
+mixup_alpha: 0.05                      
+cutmix_alpha: 0.3                       
+mixup_prob: 0.15                        
+use_amp: true
+early_stopping_patience: 20       
+#PRETRAINED
+weights: results/pretrain/best.pth
+classes: ["Normal", "Fall", "Fight"]
+eval_interval: 1
+save_interval: 5
+tensorboard_log: true
+log_interval: 20
+

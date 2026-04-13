@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Surveillance System</title>
+<style>
+  :root {
+    --bg:      #0d0f14;
+    --bg2:     #13161e;
+    --bg3:     #1a1e2a;
+    --border:  #252a38;
+    --accent:  #00d4ff;
+    --accent2: #0099bb;
+    --red:     #ff3b3b;
+    --orange:  #ff9500;
+    --green:   #00e676;
+    --text:    #e8eaf0;
+    --dim:     #6b7280;
+    --font:    'Consolas', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* TOP BAR */
+  #topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 52px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #topbar h1 { font-size: 15px; color: var(--accent); letter-spacing: .5px; }
+  #clock { font-size: 12px; color: var(--dim); }
+
+  /* MAIN LAYOUT */
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  /* VIDEO PANEL */
+  #video-panel { flex: 1; display: flex; flex-direction: column; padding: 16px 8px 16px 16px; gap: 10px; min-width: 0; }
+  #video-wrap { flex: 1; background: #000; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  #video-wrap img { max-width: 100%; max-height: 100%; display: none; }
+  #idle-msg { color: var(--dim); font-size: 13px; text-align: center; pointer-events: none; }
+  #idle-msg span { display: block; font-size: 28px; color: var(--border); margin-bottom: 8px; }
+
+  /* CONTROLS */
+  #controls { display: flex; align-items: center; gap: 8px; }
+  .btn { font-family: var(--font); font-size: 12px; padding: 7px 14px; border: 1px solid; border-radius: 3px; cursor: pointer; background: transparent; transition: opacity .15s; }
+  .btn:hover { opacity: .8; }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-blue   { color: var(--accent); border-color: var(--accent); }
+  .btn-green  { color: var(--green);  border-color: var(--green); }
+  .btn-red    { color: var(--red);    border-color: var(--red); }
+  #fps-badge { margin-left: auto; font-size: 11px; font-weight: bold; color: var(--accent); background: var(--bg3); padding: 6px 12px; border-radius: 3px; }
+
+  /* FILE INPUT (hidden) */
+  #file-input { display: none; }
+
+  /* RIGHT PANEL */
+  #right { width: 300px; flex-shrink: 0; background: var(--bg2); padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+
+  /* CARDS */
+  .card { background: var(--bg3); border-radius: 4px; padding: 14px; }
+  .card-title { font-size: 9px; color: var(--dim); letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase; }
+
+  /* DETECTION STATUS */
+  #det-label { font-size: 28px; font-weight: bold; text-align: center; padding: 4px 0 2px; }
+  #det-conf  { font-size: 11px; color: var(--dim); text-align: center; margin-bottom: 8px; }
+  #conf-bar-bg { background: var(--border); border-radius: 3px; height: 5px; }
+  #conf-bar    { height: 5px; border-radius: 3px; width: 0%; transition: width .3s, background .3s; }
+
+  /* STATS */
+  #stats-row { display: flex; gap: 8px; }
+  .stat-box  { flex: 1; background: var(--bg); border-radius: 4px; padding: 8px; text-align: center; }
+  .stat-box .s-label { font-size: 9px; letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
+  .stat-box .s-val   { font-size: 20px; font-weight: bold; }
+
+  /* LOG */
+  #log { flex: 1; min-height: 100px; overflow-y: auto; font-size: 11px; line-height: 1.8; color: var(--dim); }
+  .log-time   { color: var(--dim); }
+  .log-fight  { color: var(--red); }
+  .log-fall   { color: var(--orange); }
+  .log-normal { color: var(--green); }
+  .log-info   { color: var(--dim); }
+
+  /* MODEL STATUS */
+  #model-badge { font-size: 10px; padding: 2px 8px; border-radius: 3px; display: inline-block; }
+  .badge-loading { background: #2a2200; color: var(--orange); }
+  .badge-ready   { background: #002a15; color: var(--green); }
+
+  /* ALERT THUMBNAILS */
+  #alert-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 180px; overflow-y: auto; }
+  .alert-thumb { position: relative; border-radius: 3px; overflow: hidden; cursor: pointer; }
+  .alert-thumb img { width: 100%; height: 60px; object-fit: cover; display: block; }
+  .alert-thumb .thumb-label { position: absolute; bottom: 0; left: 0; right: 0; font-size: 9px; padding: 2px 4px; background: rgba(0,0,0,.65); }
+  .thumb-fight { color: var(--red); }
+  .thumb-fall  { color: var(--orange); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>◈&nbsp; AI Action Recogniton </h1>
+  <div style="display:flex;align-items:center;gap:14px">
+    <span id="model-badge" class="badge-loading"> Loading models…</span>
+    <span id="clock"></span>
+  </div>
+</div>
+
+<div id="main">
+  <!-- VIDEO -->
+  <div id="video-panel">
+    <div id="video-wrap">
+      <img id="stream-img" alt="stream"/>
+      <div id="idle-msg"><span>◈</span>No source selected</div>
+    </div>
+    <div id="controls">
+      <button class="btn btn-blue"  id="btn-upload"  onclick="triggerUpload()">⏏&nbsp; Load Video</button>
+      <button class="btn btn-green" id="btn-webcam"  onclick="startWebcam()">◉&nbsp; Webcam</button>
+      <button class="btn btn-red"   id="btn-stop"    onclick="stopPipeline()" disabled>■&nbsp; Stop</button>
+      <input  type="file" id="file-input" accept=".mp4,.avi,.mov,.mkv,.wmv,.mpeg" onchange="uploadVideo(this)"/>
+      <span id="fps-badge">— FPS</span>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="right">
+
+    <!-- Detection -->
+    <div class="card">
+      <div class="card-title">Detection Status</div>
+      <div id="det-label" style="color:var(--dim)">—</div>
+      <div id="det-conf">Confidence: —</div>
+      <div id="conf-bar-bg"><div id="conf-bar"></div></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title">Session Stats</div>
+      <div id="stats-row">
+        <div class="stat-box">
+          <div class="s-label" style="color:var(--red)">Fight</div>
+          <div class="s-val"   style="color:var(--red)" id="cnt-fight">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-label" style="color:var(--orange)">Fall</div>
+          <div class="s-val"   style="color:var(--orange)" id="cnt-fall">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-label" style="color:var(--dim)">Uptime</div>
+          <div class="s-val"   style="color:var(--text); font-size:14px" id="uptime">0s</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert thumbnails -->
+    <div class="card" style="flex:0 0 auto">
+      <div class="card-title">Recent Alerts</div>
+      <div id="alert-grid"></div>
+    </div>
+
+    <!-- Log -->
+    <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="card-title">Event Log</div>
+      <div id="log"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API    = '';          // same origin
+let   ws     = null;
+let   fpsT   = 0, fpsC = 0, fpsDsp = 0;
+let   statusInterval = null;
+
+/* ── CLOCK */
+function tickClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('vi-VN', {hour12:false, year:'numeric', month:'2-digit', day:'2-digit'});
+  setTimeout(tickClock, 1000);
+}
+tickClock();
+
+/* ── LOG */
+function log(msg, cls='log-info') {
+  const el  = document.getElementById('log');
+  const ts  = new Date().toLocaleTimeString('vi-VN', {hour12:false});
+  el.innerHTML += `<div><span class="log-time">[${ts}]</span> <span class="${cls}">${msg}</span></div>`;
+  el.scrollTop  = el.scrollHeight;
+}
+
+/* ── WEBSOCKET STREAM */
+function connectWS() {
+  if (ws) { ws.close(); ws = null; }
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/stream`);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onmessage = (e) => {
+    if (e.data instanceof ArrayBuffer) {
+      // JPEG bytes → hiển thị
+      const blob = new Blob([e.data], {type:'image/jpeg'});
+      const url  = URL.createObjectURL(blob);
+      const img  = document.getElementById('stream-img');
+      URL.revokeObjectURL(img.src);
+      img.src = url;
+      img.style.display = 'block';
+      document.getElementById('idle-msg').style.display = 'none';
+
+      // FPS counter
+      fpsC++;
+      const now = performance.now();
+      if (now - fpsT >= 1000) {
+        fpsDsp = Math.round(fpsC * 1000 / (now - fpsT));
+        fpsT   = now; fpsC = 0;
+        document.getElementById('fps-badge').textContent = `${fpsDsp} FPS`;
+      }
+    } else {
+      // JSON metadata
+      try {
+        const d = JSON.parse(e.data);
+        if (d.type === 'meta')  updateDetection(d.label, d.conf);
+        if (d.type === 'idle')  showIdle();
+      } catch {}
+    }
+  };
+
+  ws.onclose = () => { setTimeout(connectWS, 2000); }; // auto-reconnect
+  ws.onerror = () => ws.close();
+}
+
+function showIdle() {
+  const img = document.getElementById('stream-img');
+  img.style.display = 'none';
+  document.getElementById('idle-msg').style.display = '';
+}
+
+/* ── DETECTION UI */
+function updateDetection(label, conf) {
+  const lEl  = document.getElementById('det-label');
+  const cEl  = document.getElementById('det-conf');
+  const bar  = document.getElementById('conf-bar');
+  const pct  = Math.round(conf * 100);
+  const colorMap = { Fight: 'var(--red)', Fall: 'var(--orange)', Normal: 'var(--green)' };
+  const color    = colorMap[label] || 'var(--dim)';
+  lEl.textContent   = label || '—';
+  lEl.style.color   = color;
+  cEl.textContent   = conf > 0 ? `Confidence: ${pct}%` : 'Confidence: —';
+  bar.style.width   = `${pct}%`;
+  bar.style.background = color;
+}
+
+/* ── STATUS POLLING */
+function pollStatus() {
+  fetch(`${API}/api/status`)
+    .then(r => r.json())
+    .then(d => {
+      // model badge
+      const badge = document.getElementById('model-badge');
+      if (d.models_ready) {
+        badge.textContent  = '✓ Models ready';
+        badge.className    = 'badge-ready';
+      }
+
+      // counters
+      document.getElementById('cnt-fight').textContent = d.alerts.Fight ?? 0;
+      document.getElementById('cnt-fall').textContent  = d.alerts.Fall  ?? 0;
+
+      // uptime
+      const u = d.uptime_sec || 0;
+      document.getElementById('uptime').textContent = u >= 60 ? `${Math.floor(u/60)}m${u%60}s` : `${u}s`;
+    })
+    .catch(() => {});
+}
+
+/* ── ALERT THUMBNAILS */
+function refreshAlerts() {
+  fetch(`${API}/api/alerts`)
+    .then(r => r.json())
+    .then(d => {
+      const grid = document.getElementById('alert-grid');
+      grid.innerHTML = '';
+      (d.items || []).slice(0, 8).forEach(a => {
+        const cls  = a.label === 'Fight' ? 'thumb-fight' : 'thumb-fall';
+        const div  = document.createElement('div');
+        div.className = 'alert-thumb';
+        div.innerHTML = `
+          <img src="/alerts/${a.file}" loading="lazy" onerror="this.style.display='none'"/>
+          <div class="thumb-label ${cls}">${a.label} ${a.timestamp}</div>`;
+        grid.appendChild(div);
+      });
+    })
+    .catch(() => {});
+}
+
+/* ── UPLOAD VIDEO */
+function triggerUpload() { document.getElementById('file-input').click(); }
+
+function uploadVideo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  log(`Uploading ${file.name}…`);
+  setRunningUI(false); // disable buttons while uploading
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fetch(`${API}/api/upload-video`, {method:'POST', body:fd})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        log(`▶ Started → ${d.source}`, 'log-normal');
+        setRunningUI(true);
+        refreshAlerts();
+      } else {
+        log(`✗ ${JSON.stringify(d)}`, 'log-fight');
+        setRunningUI(false, true);
+      }
+    })
+    .catch(e => { log(`✗ Upload failed: ${e}`, 'log-fight'); setRunningUI(false, true); });
+  input.value = '';
+}
+
+/* ── WEBCAM */
+function startWebcam() {
+  log('Starting webcam…');
+  fetch(`${API}/api/start-webcam`, {method:'POST'})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) { log('◉ Webcam started', 'log-normal'); setRunningUI(true); }
+      else       { log(`✗ ${JSON.stringify(d)}`, 'log-fight'); }
+    })
+    .catch(e => log(`✗ ${e}`, 'log-fight'));
+}
+
+/* ── STOP */
+function stopPipeline() {
+  fetch(`${API}/api/stop`, {method:'POST'})
+    .then(() => { log('■ Stopped'); setRunningUI(false, true); showIdle(); })
+    .catch(() => {});
+}
+
+/* ── UI HELPERS */
+function setRunningUI(running, showStop=false) {
+  document.getElementById('btn-upload').disabled  =  running;
+  document.getElementById('btn-webcam').disabled  =  running;
+  document.getElementById('btn-stop').disabled    = !running && !showStop;
+  if (!running) {
+    document.getElementById('fps-badge').textContent = '— FPS';
+    updateDetection('—', 0);
+  }
+}
+
+/* ── INIT */
+connectWS();
+setInterval(pollStatus,    2000);
+setInterval(refreshAlerts, 5000);
+pollStatus();
+
+// Log initial events from server
+setInterval(() => {
+  fetch(`${API}/api/alerts`)
+    .then(r => r.json())
+    .then(d => {
+      const items = d.items || [];
+      if (items.length > 0 && items[0].file !== window._lastAlertId) {
+        window._lastAlertId = items[0].file;
+        const a = items[0];
+        const cls = a.label === 'Fight' ? 'log-fight' : 'log-fall';
+        log(`${a.label} detected → ${a.file}`, cls);
+      }
+    })
+    .catch(() => {});
+}, 3000);
+</script>
+</body>
+</html>
