@@ -32,3 +32,9 @@ Thumbs.db
 venv/
 env/
 .venv/
+
+# Deploy runtime files (videos, alerts)
+deploy/uploads/*
+deploy/alerts/*
+!deploy/uploads/.gitkeep
+!deploy/alerts/.gitkeep
