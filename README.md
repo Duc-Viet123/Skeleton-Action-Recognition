@@ -252,9 +252,7 @@ Mở Web UI tại `http://localhost:8000`. Web UI hiện hỗ trợ upload video
 | 1 | `Fall` | Ngã/té ngã |
 | 2 | `Fight` | Ẩu đả/xô xát |
 
-## Lưu Ý Khi Public GitHub
 
-Các file dữ liệu, checkpoint, model export, video upload và snapshot runtime có dung lượng lớn hoặc được sinh tự động. Repo đã cấu hình `.gitignore` cho các nhóm file này. Nếu cần publish model weights, nên dùng Git LFS hoặc GitHub Releases thay vì commit trực tiếp vào Git thường.
 
 Những file deploy bắt buộc như `yolo11s-pose.onnx` và `skateformer_int8.onnx` có thể được tạo bằng script export/quantize hoặc tải từ release tương ứng.
 
