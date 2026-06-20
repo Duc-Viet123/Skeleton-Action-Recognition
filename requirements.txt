@@ -13,7 +13,13 @@ tensorboard>=2.13
 
 # Data processing & visualization
 opencv-python>=4.8
+ultralytics>=8.0
+huggingface_hub>=0.23
 
 # Model export & optimization
 onnx>=1.14
 onnxruntime>=1.17
+psutil>=5.9
+
+# Report generation
+python-docx>=1.1.0

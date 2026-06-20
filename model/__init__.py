@@ -1,4 +1,13 @@
-from .SkateFormer import Model as SkateFormer
-from .SkateFormerPre import Model as SkateFormerPre
+__all__ = ["SkateFormer", "SkateFormerPre", "STGCN"]
 
-__all__ = ["SkateFormer", "SkateFormerPre"]
+
+def __getattr__(name):
+    if name == "SkateFormer":
+        from .SkateFormer import Model
+    elif name == "SkateFormerPre":
+        from .SkateFormerPre import Model
+    elif name == "STGCN":
+        from .st_gcn import Model
+    else:
+        raise AttributeError(f"module 'model' has no attribute {name!r}")
+    return Model

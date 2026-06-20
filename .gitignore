@@ -22,6 +22,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.ultralytics/
 
 #Jupyter
 .ipynb_checkpoints/
@@ -33,8 +34,20 @@ venv/
 env/
 .venv/
 
-# Deploy runtime files (videos, alerts)
+# Model/checkpoint artifacts
+*.pt
+*.pth
+*.onnx
+
+# Experiment outputs
+results/**/*.pt
+results/**/*.pth
+results/**/*.onnx
+
+# Deploy runtime files (videos, alerts, reports)
 deploy/uploads/*
 deploy/alerts/*
+deploy/reports/*
 !deploy/uploads/.gitkeep
 !deploy/alerts/.gitkeep
+!deploy/reports/.gitkeep

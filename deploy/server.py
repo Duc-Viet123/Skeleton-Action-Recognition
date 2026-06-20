@@ -35,7 +35,7 @@ WINDOW_SIZE        = 64
 BOX_ALPHA          = 0.55
 YOLO_SKIP          = 5
 ACTION_SKIP        = 5
-SAVE_COOLDOWN_SECS = 10
+SAVE_COOLDOWN_SECS = 5
 FALL_THRESHOLD     = 0.60
 FIGHT_THRESHOLD    = 0.60
 QUEUE_FRAME_MAX    = 2
@@ -186,6 +186,8 @@ class ActionThread(threading.Thread):
         self.skel_buf     = deque(maxlen=WINDOW_SIZE)
         self.smooth_boxes = {}
         self.last_saved_time = {"Fight": 0.0, "Fall": 0.0}
+        self.prob_ema = None
+        self.prob_ema_alpha = 0.35
 
     def _ema_box(self, tid, raw):
         if tid not in self.smooth_boxes:
@@ -301,20 +303,45 @@ class ActionThread(threading.Thread):
             if len(self.skel_buf) == WINDOW_SIZE and frame_idx % ACTION_SKIP == 0:
                 inp    = np.array(self.skel_buf).transpose(2,0,1,3)[np.newaxis].astype(np.float32)
                 logits = self.sess.run(None, {"input": inp})[0]
-                e      = np.exp(logits - logits.max())
-                probs  = (e / e.sum())[0]
-                pred   = int(np.argmax(probs))
+                logits = np.asarray(logits)
+                # stable softmax over class dimension
+                e = np.exp(logits - logits.max(axis=1, keepdims=True))
+                probs = (e / e.sum(axis=1, keepdims=True))[0]
+
+                # EMA smoothing to reduce false spikes
+                if self.prob_ema is None:
+                    self.prob_ema = probs.astype(float)
+                else:
+                    a = self.prob_ema_alpha
+                    self.prob_ema = a * probs + (1 - a) * self.prob_ema
+                probs_s = self.prob_ema
+                pred   = int(np.argmax(probs_s))
 
                 label = CLASSES[pred]
-                conf  = float(probs[pred])
+                conf  = float(probs_s[pred])
 
-                if label == "Fall"  and conf < FALL_THRESHOLD:  label, conf = "Normal", float(probs[0])
-                if label == "Fight" and conf < FIGHT_THRESHOLD: label, conf = "Normal", float(probs[0])
+                if label == "Fall"  and conf < FALL_THRESHOLD:  label, conf = "Normal", float(probs_s[0])
+                if label == "Fight" and conf < FIGHT_THRESHOLD: label, conf = "Normal", float(probs_s[0])
+
+                # Heuristic gate to suppress obvious standing-as-fall:
+                # Only allow "Fall" when at least one detected person bbox looks horizontal.
+                if label == "Fall":
+                    allow = False
+                    for sbox, _tid in smooth:
+                        x1, y1, x2, y2 = sbox
+                        bw = max(1, (x2 - x1))
+                        bh = max(1, (y2 - y1))
+                        ar = bh / float(bw)  # standing -> large, lying -> small
+                        if ar < 1.15:
+                            allow = True
+                            break
+                    if not allow:
+                        label, conf = "Normal", float(probs_s[0])
 
                 self.result_state.update({
                     "label": label,
                     "conf":  conf,
-                    "probs": probs.tolist(),
+                    "probs": probs_s.tolist(),
                 })
 
         

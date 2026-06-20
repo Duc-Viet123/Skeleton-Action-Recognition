@@ -1,0 +1,9 @@
+Best Val Acc : 85.29% (Epoch 86)
+Test Acc     : 87.27%
+Test F1      : 86.73%
+
+              precision    recall  f1-score   support
+
+      Normal     0.8493    0.7949    0.8212        78
+        Fall     0.8803    0.9279    0.9035       111
+       Fight     0.8824    0.8721    0.8772        86

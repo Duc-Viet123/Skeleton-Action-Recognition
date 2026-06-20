@@ -27,7 +27,7 @@ class FeederMultiClass(Dataset):
             self.data = np.load(data_path)     
             self.label = np.load(label_path)    
         except Exception as e:
-            print(f"Lỗi nạp file npy: {e}")
+            print(f"Error loading npy files: {e}")
             raise
 
         self.window_size = window_size
@@ -60,7 +60,7 @@ class FeederMultiClass(Dataset):
         unique, counts = np.unique(self.label, return_counts=True)
         print(f"\n[Feeder] Dataset Loaded: {self.N} samples")
         for idx, count in zip(unique, counts):
-            print(f"  - {self.label_names[idx]:7s}: {count:4d} mẫu")
+            print(f"  - {self.label_names[idx]:7s}: {count:4d} samples")
         print("-" * 30)
 
     def __len__(self):
